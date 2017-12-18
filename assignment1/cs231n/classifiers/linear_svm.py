@@ -34,14 +34,21 @@ def svm_loss_naive(W, X, y, reg):
         continue
       margin = scores[j] - correct_class_score + 1 # note delta = 1
       if margin > 0:
+        dW[:, j] += X[i] # gradient upgrade for non-target classes
+        dW[:, y[i]] -= X[i] #gradient upgrade for target class
         loss += margin
+
 
   # Right now the loss is a sum over all training examples, but we want it
   # to be an average instead so we divide by num_train.
   loss /= num_train
+  # Average for gradients as well
+  dW /= num_train
 
   # Add regularization to the loss.
   loss += reg * np.sum(W * W)
+  # Add regularization to the gradient
+  dW += 2 * reg * W
 
   #############################################################################
   # TODO:                                                                     #
@@ -70,7 +77,17 @@ def svm_loss_vectorized(W, X, y, reg):
   # Implement a vectorized version of the structured SVM loss, storing the    #
   # result in loss.                                                           #
   #############################################################################
-  pass
+  num_train = X.shape[0]
+
+  scores = X.dot(W)
+ 
+  correct_class_score = scores[np.arange(num_train), y]
+  margins = np.maximum(0, scores - correct_class_score[:, np.newaxis] + 1)
+  loss = np.sum(margins) 
+  loss /= num_train
+  loss += reg * np.sum(W * W)
+  loss -= 1 # subtract 1 to account for correct class margin
+
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
@@ -85,7 +102,17 @@ def svm_loss_vectorized(W, X, y, reg):
   # to reuse some of the intermediate values that you used to compute the     #
   # loss.                                                                     #
   #############################################################################
-  pass
+  margins[np.arange(num_train), y] = 0
+  incorrect_class = np.zeros(margins.shape)
+  incorrect_class[margins > 0] = 1
+
+  incorrect_class_count = np.sum(incorrect_class, axis=1)
+  incorrect_class[np.arange(num_train), y] = -incorrect_class_count
+
+  dW = X.T.dot(incorrect_class)
+  dW /= num_train
+  dW += 2 * reg * W
+
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
